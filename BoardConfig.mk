@@ -63,7 +63,7 @@ BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOTIMG_HEADER_VERSION)
 #TARGET_USE_SDCLANG := true
 
 # Assert
-TARGET_OTA_ASSERT_DEVICE := davinci
+TARGET_OTA_ASSERT_DEVICE := davinci,davinciin
 
 # Avb
 BOARD_AVB_ENABLE := true
