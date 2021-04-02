@@ -6,7 +6,6 @@ jobs:
   convert_via_pandoc:
     name: Convert via Pandoc
     runs-on: ubuntu-18.04
-    if: "contains(github.event.head_commit.message, '[docs]')"
     steps:
       - uses: actions/checkout@v1
       - uses: MeilCli/setup-crystal-action@v3.0.0
