@@ -30,7 +30,7 @@ jobs:
           sed -i '/darwin/d' manifest.xml
           cd ../
       - name: Repo sync
-        run: python3 ~/bin/repo sync -c -q --force-sync --no-clone-bundle --optimized-fetch --prune --no-tags -j$(nproc --all)
+        run: cd playground && python3 ~/bin/repo sync -c -q --force-sync --no-clone-bundle --optimized-fetch --prune --no-tags -j$(nproc --all)
       - name: Build Recovery
         run: |
           cd playground
