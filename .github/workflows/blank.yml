@@ -1,9 +1,6 @@
 name: CI
+on: push
 
-# Controls when the action will run. 
-on: [push]
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -44,4 +41,3 @@ jobs:
           wget "https://raw.githubusercontent.com/fabianonline/telegram.sh/e6a8f2cf2df353bce53ed22df5360d1ba7a6c752/telegram"
           chmod a+x ./telegram
           ./telegram -t ${{ secrets.TOKEN }} -c -${{ secrets.CHANNEL }} -f ${BUILDFILE} "MD5: ${HASH_MD5}"
-      
