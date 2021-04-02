@@ -1,30 +1,45 @@
-name: Docs
+name: CI
 
 on: push
 
 jobs:
-  convert_via_pandoc:
-    name: Convert via Pandoc
-    runs-on: ubuntu-18.04
+  build:
+    name: Build and Upload Recovery
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: MeilCli/setup-crystal-action@v3.0.0
-        with:
-          crystal_version: 0.34.0
-          shards_version: 0.10.0
-      - name: Run Crystal
+      - name: Prepare
         run: |
-          export GRANZ_BUILD=TRUE
-          shards install
-          crystal run ./src/Granz.cr
-          mv ./docs/main.css ./
-      - uses: maxheld83/pandoc@v2
-        with:
-          args: "--standalone -f markdown-smart -t html5 -o ./docs/index.html ./commands.md -c ./main.css"
-      - run: |
-          mv ./main.css ./docs/main.css
-          git config --global user.name "github-actions[bot]"
+          apt-get -y update && apt-get -y upgrade && apt-get -y install bc bison build-essential curl flex g++-multilib gcc gcc-multilib clang git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-dev libxml2 libxml2-utils lzop pngcrush schedtool squashfs-tools xsltproc zip zlib1g-dev unzip openjdk-8-jdk python3 ccache libtinfo5 repo libstdc++6 wget libssl-dev rsync unzip zip sed
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ./docs/index.html ./commands.md
-          git commit -m ":pencil: Generate Docs"
-          git push "https://GeopJr:${{ secrets.GITHUB_TOKEN }}@github.com/GeopJr/Granz-cr.git" HEAD:master
+          git config --global user.name "GitHub Action"
+          git config --global color.ui false
+          python3 ~/bin/repo init --depth=1 -u https://gitlab.com/OrangeFox/Manifest.git -b fox_9.0
+      - name: Remove useless files
+        run: |
+          cd .repo/manifests
+          sed -i '/darwin/d' default.xml
+          ( find . -type f -name '*.xml' | xargs sed -i '/darwin/d' ) || true
+          git commit -a -m "Bump" || true
+          cd ../
+          sed -i '/darwin/d' manifest.xml
+          cd ../
+      - name: Repo sync
+        run: python3 ~/bin/repo sync -c -q --force-sync --no-clone-bundle --optimized-fetch --prune --no-tags -j$(nproc --all)
+      - name: Build Recovery
+        run: |
+          git clone https://github.com/geopjr/orangefox_device_xiaomi_davinci -b fox_9.0 device/xiaomi/davinci
+          . build/envsetup.sh && export ALLOW_MISSING_DEPENDENCIES=true
+          lunch omni_davinci-eng
+          make recoveryimage
+      - name: Upload
+        run: |
+          export BUILDFILE=$(find $(pwd)/out/target/product/davinci/OrangeFox*.zip 2>/dev/null)
+          export HASH_MD5=$(md5sum $BUILDFILE | awk '{ print $1 }')
+          cd out/target/product/davinci
+          unzip ${BUILDFILE}  "META-INF/*" && sed -i -e "/ui_print \" >> Rebooting to Recovery in 5 seconds ...\"/,/killall recovery/d" -e '/} # end Main();/i\\tui_print "- Done!"\nui_print " "' META-INF/com/google/android/update-binary && zip -ur ${BUILDFILE} ./META-INF
+          wget "https://raw.githubusercontent.com/fabianonline/telegram.sh/e6a8f2cf2df353bce53ed22df5360d1ba7a6c752/telegram"
+          chmod a+x ./telegram
+          ./telegram -t ${{ secrets.TOKEN }} -c -${{ secrets.CHANNEL }} -f ${BUILDFILE} "MD5: ${HASH_MD5}"
